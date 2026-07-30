@@ -1,0 +1,49 @@
+plugins {
+    id 'java'
+    id 'checkstyle'
+    id 'jacoco'
+    id 'org.sonarqube' version '7.3.1.8318'
+    id 'org.springframework.boot' version '4.1.0'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'hexlet.code'
+version = '0.0.1-SNAPSHOT'
+description = 'app'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+checkstyle {
+    toolVersion = "10.12.4"                      // версия Checkstyle
+    configFile = rootProject.file("config/checkstyle/checkstyle.xml")
+}
+sonar {
+    properties {
+        property("sonar.projectKey", "nodirbek9_java-project-99");
+        property("sonar.organization", "nodirbek9")
+        property("sonar.host.url", "https://sonarcloud.io")
+        property(
+                "sonar.coverage.jacoco.xmlReportPaths",
+                "build/reports/jacoco/test/jacocoTestReport.xml"
+        )
+    }
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
