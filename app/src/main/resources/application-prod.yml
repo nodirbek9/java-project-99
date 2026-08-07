@@ -1,3 +1,5 @@
+server:
+  port: 9090
 spring:
   application:
     name: app
@@ -13,5 +15,3 @@ spring:
     hibernate:
       ddl-auto: update
 
-server:
-  port: 8080

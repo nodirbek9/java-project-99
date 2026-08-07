@@ -6,8 +6,14 @@ spring:
     driverClassName: org.h2.Driver
     username: admin
     password: 1234
+  h2.console:
+    enabled: true
   jpa:
     show-sql: true
     hibernate:
       ddl-auto: update
     database-platform: org.hibernate.dialect.H2Dialect
+  hibernate:
+    ddl-auto: update
+server:
+  port: 8080

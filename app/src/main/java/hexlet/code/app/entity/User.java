@@ -1,4 +1,4 @@
-package hexlet.code.app;
+package hexlet.code.app.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
