@@ -1,10 +1,13 @@
 package hexlet.code.app.service;
 
-import hexlet.code.app.UserResponse;
-import hexlet.code.app.entity.User;
+import hexlet.code.app.dto.UserCreateDTO;
+import hexlet.code.app.dto.UserDTO;
+import hexlet.code.app.dto.UserUpdateDTO;
+import hexlet.code.app.exception.ResourceNotFoundException;
 import hexlet.code.app.mapper.UserMapper;
 import hexlet.code.app.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,21 +16,66 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserService {
 
-    private UserRepository userRepository;
+    private static final int MIN_PASSWORD_LENGTH = 3;
+    private static final String EMAIL_PATTERN = "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$";
+
+    private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
-
-    public UserResponse getOne(Long id) {
-        User user = userRepository.findById(id).orElseThrow(
-                () -> new RuntimeException("User not found")
-        );
-        return userMapper.toResponse(user);
+    public List<UserDTO> getAll() {
+        return userRepository.findAll().stream()
+                .map(userMapper::map)
+                .toList();
     }
 
-    public List<UserResponse> getAll() {
-        List<User> users = userRepository.findAll();
-        return users.stream()
-                .map(userMapper::toResponse)
-                .toList();
+    public UserDTO findById(Long id) {
+        var user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User with id " + id + " not found"));
+        return userMapper.map(user);
+    }
+
+    public UserDTO create(UserCreateDTO dto) {
+        var user = userMapper.map(dto);
+        user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        userRepository.save(user);
+        return userMapper.map(user);
+    }
+
+    public UserDTO update(Long id, UserUpdateDTO dto) {
+        var user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User with id " + id + " not found"));
+
+        var newPassword = dto.getPassword();
+        if (newPassword != null && newPassword.isPresent()) {
+            var value = newPassword.get();
+            if (value == null || value.length() < MIN_PASSWORD_LENGTH) {
+                throw new IllegalArgumentException("Password is too short");
+            }
+        }
+
+        var newEmail = dto.getEmail();
+        if (newEmail != null && newEmail.isPresent()) {
+            var value = newEmail.get();
+            if (value == null || !value.matches(EMAIL_PATTERN)) {
+                throw new IllegalArgumentException("Email is not valid");
+            }
+        }
+
+        userMapper.update(dto, user);
+
+        if (newPassword != null && newPassword.isPresent()) {
+            user.setPassword(passwordEncoder.encode(newPassword.get()));
+        }
+
+        userRepository.save(user);
+        return userMapper.map(user);
+    }
+
+    public void delete(Long id) {
+        if (!userRepository.existsById(id)) {
+            throw new ResourceNotFoundException("User with id " + id + " not found");
+        }
+        userRepository.deleteById(id);
     }
 }

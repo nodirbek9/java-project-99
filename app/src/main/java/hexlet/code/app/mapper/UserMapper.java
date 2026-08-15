@@ -1,11 +1,26 @@
 package hexlet.code.app.mapper;
 
-import hexlet.code.app.UserResponse;
+import hexlet.code.app.dto.UserCreateDTO;
+import hexlet.code.app.dto.UserDTO;
+import hexlet.code.app.dto.UserUpdateDTO;
 import hexlet.code.app.entity.User;
 import org.mapstruct.Mapper;
+import org.mapstruct.MappingConstants;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.mapstruct.ReportingPolicy;
 
-@Mapper(componentModel = "spring")
+@Mapper(
+        uses = {JsonNullableMapper.class},
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE,
+        componentModel = MappingConstants.ComponentModel.SPRING,
+        unmappedTargetPolicy = ReportingPolicy.IGNORE
+)
 public interface UserMapper {
 
-    UserResponse toResponse(User user);
+    User map(UserCreateDTO dto);
+
+    UserDTO map(User model);
+
+    void update(UserUpdateDTO dto, @MappingTarget User model);
 }
