@@ -1,0 +1,10 @@
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:production}
+  release: ${SENTRY_RELEASE:java-project-99@0.0.1-SNAPSHOT}
+  send-default-pii: false
+  enable-tracing: false
+  shutdown-timeout-millis: 2000
+  max-request-body-size: none
+  in-app-includes:
+    - hexlet.code.app
