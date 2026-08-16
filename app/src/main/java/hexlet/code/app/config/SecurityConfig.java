@@ -40,9 +40,14 @@ public class SecurityConfig {
         return http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/welcome", "/index.html", "/assets/**").permitAll()
+                        // фронтенд и статика
+                        .requestMatchers("/", "/index.html", "/welcome").permitAll()
+                        .requestMatchers("/assets/**", "/static/**", "/favicon.ico", "/*.svg").permitAll()
+                        // аутентификация и регистрация
                         .requestMatchers("/api/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
+                        // документация
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .anyRequest().authenticated())
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
