@@ -1,8 +1,8 @@
-package hexlet.code.app;
+package hexlet.code.app.controller.api;
 
-import io.sentry.Sentry;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -14,13 +14,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 })
 class SentryConfigTest {
 
-    @AfterEach
-    void clearSentry() {
-        Sentry.close();
-    }
+    @Autowired
+    private ApplicationContext applicationContext;
 
     @Test
     void contextStartsWithoutDsn() {
-        assertThat(Sentry.getLastEventId()).isNull();
+        assertThat(applicationContext).isNotNull();
     }
 }

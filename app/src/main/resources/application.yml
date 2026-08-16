@@ -4,8 +4,8 @@ spring:
   datasource:
     url: jdbc:h2:mem:app;DB_CLOSE_DELAY=-1
     driverClassName: org.h2.Driver
-    username: sa
-    password: ''
+    username: admin
+    password: 1111
   h2:
     console:
       enabled: true
@@ -17,7 +17,7 @@ spring:
     database-platform: org.hibernate.dialect.H2Dialect
 
 jwt:
-  secret: ${JWT_SECRET:change-me-please-this-secret-must-be-at-least-32-bytes-long}
+  secret: ${JWT_SECRET:3cfa76ef14937c1c0ea519f8fc057a80fcd04a7420f8e8bcd0a7567c272e007b}
 
 server:
   port: ${PORT:8080}
