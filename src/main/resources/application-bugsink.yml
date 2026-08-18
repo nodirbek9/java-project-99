@@ -7,4 +7,4 @@ sentry:
   shutdown-timeout-millis: 2000
   max-request-body-size: none
   in-app-includes:
-    - hexlet.code.app
+    - hexlet.code
