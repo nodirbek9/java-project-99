@@ -49,7 +49,7 @@ public class LabelsController {
 
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public LabelDTO update(@PathVariable Long id, @RequestBody LabelUpdateDTO dto) {
+    public LabelDTO update(@PathVariable Long id, @Valid @RequestBody LabelUpdateDTO dto) {
         return labelService.update(id, dto);
     }
 

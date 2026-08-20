@@ -49,7 +49,7 @@ public class TaskStatusesController {
 
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public TaskStatusDTO update(@PathVariable Long id, @RequestBody TaskStatusUpdateDTO dto) {
+    public TaskStatusDTO update(@PathVariable Long id, @Valid @RequestBody TaskStatusUpdateDTO dto) {
         return taskStatusService.update(id, dto);
     }
 

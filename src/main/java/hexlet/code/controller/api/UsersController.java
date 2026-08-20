@@ -51,7 +51,7 @@ public class UsersController {
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("@userUtils.isCurrentUser(#id)")
-    public UserDTO update(@PathVariable Long id, @RequestBody UserUpdateDTO dto) {
+    public UserDTO update(@PathVariable Long id, @Valid @RequestBody UserUpdateDTO dto) {
         return userService.update(id, dto);
     }
 
