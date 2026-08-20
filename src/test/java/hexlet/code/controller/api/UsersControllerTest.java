@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
@@ -26,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(TestDataCleaner.class)
 class UsersControllerTest {
 
     @Autowired
@@ -39,6 +41,9 @@ class UsersControllerTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private TestDataCleaner cleaner;
 
     private User testUser;
     private User anotherUser;
@@ -58,9 +63,9 @@ class UsersControllerTest {
 
     @BeforeEach
     void setUp() {
-        var suffix = String.valueOf(System.nanoTime());
-        testUser = createUser("john" + suffix + "@google.com");
-        anotherUser = createUser("jack" + suffix + "@yahoo.com");
+        cleaner.clean();
+        testUser = createUser("john@google.com");
+        anotherUser = createUser("jack@yahoo.com");
     }
 
     @Test
@@ -73,6 +78,7 @@ class UsersControllerTest {
     void testIndex() throws Exception {
         mockMvc.perform(asUser(get("/api/users"), testUser))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].id").exists());
     }
 
@@ -94,7 +100,7 @@ class UsersControllerTest {
 
     @Test
     void testCreate() throws Exception {
-        var email = "new" + System.nanoTime() + "@google.com";
+        var email = "new-user@google.com";
         var data = Map.of(
                 "email", email,
                 "firstName", "Jack",
@@ -125,7 +131,7 @@ class UsersControllerTest {
 
     @Test
     void testCreateWithShortPasswordIsBadRequest() throws Exception {
-        var data = Map.of("email", "ok" + System.nanoTime() + "@google.com", "password", "ab");
+        var data = Map.of("email", "short-password@google.com", "password", "ab");
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -135,7 +141,7 @@ class UsersControllerTest {
 
     @Test
     void testPartialUpdateSelf() throws Exception {
-        var newEmail = "updated" + System.nanoTime() + "@yahoo.com";
+        var newEmail = "updated@yahoo.com";
         var data = Map.of("email", newEmail, "password", "new-password");
 
         mockMvc.perform(asUser(put("/api/users/" + testUser.getId()), testUser)
@@ -148,6 +154,16 @@ class UsersControllerTest {
 
         var updated = userRepository.findById(testUser.getId()).orElseThrow();
         assertThat(passwordEncoder.matches("new-password", updated.getPassword())).isTrue();
+    }
+
+    @Test
+    void testUpdateWithInvalidEmailIsBadRequest() throws Exception {
+        var data = Map.of("email", "broken-email");
+
+        mockMvc.perform(asUser(put("/api/users/" + testUser.getId()), testUser)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(data)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

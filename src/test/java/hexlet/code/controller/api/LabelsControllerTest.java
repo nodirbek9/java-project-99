@@ -3,13 +3,16 @@ package hexlet.code.controller.api;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hexlet.code.entity.Label;
 import hexlet.code.entity.Task;
+import hexlet.code.entity.TaskStatus;
 import hexlet.code.repository.LabelRepository;
 import hexlet.code.repository.TaskRepository;
 import hexlet.code.repository.TaskStatusRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -28,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(TestDataCleaner.class)
 class LabelsControllerTest {
 
     @Autowired
@@ -45,10 +49,24 @@ class LabelsControllerTest {
     @Autowired
     private TaskStatusRepository taskStatusRepository;
 
-    private Label createLabel() {
+    @Autowired
+    private TestDataCleaner cleaner;
+
+    private Label testLabel;
+    private TaskStatus testStatus;
+
+    @BeforeEach
+    void setUp() {
+        cleaner.clean();
+
         var label = new Label();
-        label.setName("label-" + System.nanoTime());
-        return labelRepository.save(label);
+        label.setName("bug");
+        testLabel = labelRepository.save(label);
+
+        var status = new TaskStatus();
+        status.setName("Draft");
+        status.setSlug("draft");
+        testStatus = taskStatusRepository.save(status);
     }
 
     @Test
@@ -58,40 +76,38 @@ class LabelsControllerTest {
     }
 
     @Test
-    void testDefaultLabelsExist() throws Exception {
-        assertThat(labelRepository.findByName("feature")).isPresent();
-        assertThat(labelRepository.findByName("bug")).isPresent();
-    }
-
-    @Test
     void testIndex() throws Exception {
         mockMvc.perform(get("/api/labels").with(jwt()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").exists());
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].name").value("bug"));
     }
 
     @Test
     void testShow() throws Exception {
-        var label = createLabel();
-
-        mockMvc.perform(get("/api/labels/" + label.getId()).with(jwt()))
+        mockMvc.perform(get("/api/labels/" + testLabel.getId()).with(jwt()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value(label.getName()))
+                .andExpect(jsonPath("$.name").value("bug"))
                 .andExpect(jsonPath("$.createdAt").exists());
     }
 
     @Test
+    void testShowNotFound() throws Exception {
+        mockMvc.perform(get("/api/labels/999999").with(jwt()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void testCreate() throws Exception {
-        var name = "new-label-" + System.nanoTime();
-        var data = Map.of("name", name);
+        var data = Map.of("name", "feature");
 
         mockMvc.perform(post("/api/labels").with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(data)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value(name));
+                .andExpect(jsonPath("$.name").value("feature"));
 
-        assertThat(labelRepository.findByName(name)).isPresent();
+        assertThat(labelRepository.findByName("feature")).isPresent();
     }
 
     @Test
@@ -116,38 +132,44 @@ class LabelsControllerTest {
 
     @Test
     void testUpdate() throws Exception {
-        var label = createLabel();
-        var newName = "updated-label-" + System.nanoTime();
+        var data = Map.of("name", "critical-bug");
 
-        mockMvc.perform(put("/api/labels/" + label.getId()).with(jwt())
+        mockMvc.perform(put("/api/labels/" + testLabel.getId()).with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("name", newName))))
+                        .content(objectMapper.writeValueAsString(data)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value(newName));
+                .andExpect(jsonPath("$.name").value("critical-bug"));
+    }
+
+    @Test
+    void testUpdateWithShortNameIsBadRequest() throws Exception {
+        var data = Map.of("name", "ab");
+
+        mockMvc.perform(put("/api/labels/" + testLabel.getId()).with(jwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(data)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
     void testDelete() throws Exception {
-        var label = createLabel();
-
-        mockMvc.perform(delete("/api/labels/" + label.getId()).with(jwt()))
+        mockMvc.perform(delete("/api/labels/" + testLabel.getId()).with(jwt()))
                 .andExpect(status().isNoContent());
 
-        assertThat(labelRepository.findById(label.getId())).isEmpty();
+        assertThat(labelRepository.findById(testLabel.getId())).isEmpty();
     }
 
     @Test
     void testDeleteLabelInUseIsConflict() throws Exception {
-        var label = createLabel();
         var task = new Task();
-        task.setName("Task " + System.nanoTime());
-        task.setTaskStatus(taskStatusRepository.findBySlug("draft").orElseThrow());
-        task.setLabels(new HashSet<>(Set.of(label)));
+        task.setName("Linked task");
+        task.setTaskStatus(testStatus);
+        task.setLabels(new HashSet<>(Set.of(testLabel)));
         taskRepository.save(task);
 
-        mockMvc.perform(delete("/api/labels/" + label.getId()).with(jwt()))
+        mockMvc.perform(delete("/api/labels/" + testLabel.getId()).with(jwt()))
                 .andExpect(status().isConflict());
 
-        assertThat(labelRepository.findById(label.getId())).isPresent();
+        assertThat(labelRepository.findById(testLabel.getId())).isPresent();
     }
 }

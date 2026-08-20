@@ -101,15 +101,24 @@ public class TaskMapper {
                 .orElseThrow(() -> new ResourceNotFoundException("User with id " + assigneeId + " not found"));
     }
 
+    /**
+     * Один запрос в базу на все метки сразу.
+     * Если какой-то идентификатор не нашёлся, сравниваем размеры и сообщаем, какие именно лишние.
+     */
     private Set<Label> resolveLabels(Set<Long> labelIds) {
         if (labelIds == null || labelIds.isEmpty()) {
             return new HashSet<>();
         }
-        var labels = new HashSet<Label>();
-        for (var labelId : labelIds) {
-            labels.add(labelRepository.findById(labelId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Label with id " + labelId + " not found")));
+        var labels = labelRepository.findByIdIn(labelIds);
+        if (labels.size() != labelIds.size()) {
+            var found = labels.stream()
+                    .map(Label::getId)
+                    .collect(Collectors.toSet());
+            var missing = labelIds.stream()
+                    .filter(id -> !found.contains(id))
+                    .toList();
+            throw new ResourceNotFoundException("Labels not found: " + missing);
         }
-        return labels;
+        return new HashSet<>(labels);
     }
 }

@@ -5,10 +5,12 @@ import hexlet.code.entity.Task;
 import hexlet.code.entity.TaskStatus;
 import hexlet.code.repository.TaskRepository;
 import hexlet.code.repository.TaskStatusRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -25,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(TestDataCleaner.class)
 class TaskStatusesControllerTest {
 
     @Autowired
@@ -39,12 +42,19 @@ class TaskStatusesControllerTest {
     @Autowired
     private TaskRepository taskRepository;
 
-    private TaskStatus createStatus() {
-        var suffix = String.valueOf(System.nanoTime());
+    @Autowired
+    private TestDataCleaner cleaner;
+
+    private TaskStatus testStatus;
+
+    @BeforeEach
+    void setUp() {
+        cleaner.clean();
+
         var status = new TaskStatus();
-        status.setName("Status" + suffix);
-        status.setSlug("status_" + suffix);
-        return taskStatusRepository.save(status);
+        status.setName("Draft");
+        status.setSlug("draft");
+        testStatus = taskStatusRepository.save(status);
     }
 
     @Test
@@ -57,17 +67,16 @@ class TaskStatusesControllerTest {
     void testIndex() throws Exception {
         mockMvc.perform(get("/api/task_statuses").with(jwt()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].slug").exists());
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].slug").value("draft"));
     }
 
     @Test
     void testShow() throws Exception {
-        var status = createStatus();
-
-        mockMvc.perform(get("/api/task_statuses/" + status.getId()).with(jwt()))
+        mockMvc.perform(get("/api/task_statuses/" + testStatus.getId()).with(jwt()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value(status.getName()))
-                .andExpect(jsonPath("$.slug").value(status.getSlug()))
+                .andExpect(jsonPath("$.name").value("Draft"))
+                .andExpect(jsonPath("$.slug").value("draft"))
                 .andExpect(jsonPath("$.createdAt").exists());
     }
 
@@ -79,16 +88,15 @@ class TaskStatusesControllerTest {
 
     @Test
     void testCreate() throws Exception {
-        var suffix = String.valueOf(System.nanoTime());
-        var data = Map.of("name", "New" + suffix, "slug", "new_" + suffix);
+        var data = Map.of("name", "ToReview", "slug", "to_review");
 
         mockMvc.perform(post("/api/task_statuses").with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(data)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.slug").value("new_" + suffix));
+                .andExpect(jsonPath("$.slug").value("to_review"));
 
-        assertThat(taskStatusRepository.findBySlug("new_" + suffix)).isPresent();
+        assertThat(taskStatusRepository.findBySlug("to_review")).isPresent();
     }
 
     @Test
@@ -103,7 +111,7 @@ class TaskStatusesControllerTest {
 
     @Test
     void testCreateWithBlankNameIsBadRequest() throws Exception {
-        var data = Map.of("name", "", "slug", "blank_" + System.nanoTime());
+        var data = Map.of("name", "", "slug", "blank-name");
 
         mockMvc.perform(post("/api/task_statuses").with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -113,39 +121,44 @@ class TaskStatusesControllerTest {
 
     @Test
     void testPartialUpdate() throws Exception {
-        var taskStatus = createStatus();
-        var newName = "Renamed" + System.nanoTime();
-        var data = Map.of("name", newName);
+        var data = Map.of("name", "Renamed");
 
-        mockMvc.perform(put("/api/task_statuses/" + taskStatus.getId()).with(jwt())
+        mockMvc.perform(put("/api/task_statuses/" + testStatus.getId()).with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(data)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value(newName))
-                .andExpect(jsonPath("$.slug").value(taskStatus.getSlug()));
+                .andExpect(jsonPath("$.name").value("Renamed"))
+                .andExpect(jsonPath("$.slug").value("draft"));
+    }
+
+    @Test
+    void testUpdateWithoutAuthIsUnauthorized() throws Exception {
+        var data = Map.of("name", "Renamed");
+
+        mockMvc.perform(put("/api/task_statuses/" + testStatus.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(data)))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
     void testDelete() throws Exception {
-        var taskStatus = createStatus();
-
-        mockMvc.perform(delete("/api/task_statuses/" + taskStatus.getId()).with(jwt()))
+        mockMvc.perform(delete("/api/task_statuses/" + testStatus.getId()).with(jwt()))
                 .andExpect(status().isNoContent());
 
-        assertThat(taskStatusRepository.findById(taskStatus.getId())).isEmpty();
+        assertThat(taskStatusRepository.findById(testStatus.getId())).isEmpty();
     }
 
     @Test
     void testDeleteStatusInUseIsConflict() throws Exception {
-        var taskStatus = createStatus();
         var task = new Task();
-        task.setName("Task " + System.nanoTime());
-        task.setTaskStatus(taskStatus);
+        task.setName("Linked task");
+        task.setTaskStatus(testStatus);
         taskRepository.save(task);
 
-        mockMvc.perform(delete("/api/task_statuses/" + taskStatus.getId()).with(jwt()))
+        mockMvc.perform(delete("/api/task_statuses/" + testStatus.getId()).with(jwt()))
                 .andExpect(status().isConflict());
 
-        assertThat(taskStatusRepository.findById(taskStatus.getId())).isPresent();
+        assertThat(taskStatusRepository.findById(testStatus.getId())).isPresent();
     }
 }
